@@ -53,7 +53,6 @@ class Scraper:
                                 'author': fetched_message.author.id, 'content': fetched_message.content})
             bar.update(1)
             if time_now - last_edit >= 2:
-                print("Updating.")
                 updated = str(bar)
                 await self.client.edit_message(message_return, updated)
                 last_edit = time.time()
@@ -64,10 +63,11 @@ class Scraper:
 
     async def update_all(self):
         for c in self.server.channels:
-            print("Now scraping " + c.name)
+            await self.client.send_message(self.response_channel, "Now fetching #" + c.name)
             await self.update(c)
 
     async def update_one(self, channel_to_update):
+        await self.client.send_message(self.response_channel, "Now fetching #" + channel_to_update.name)
         await self.update(channel_to_update)
 
 
