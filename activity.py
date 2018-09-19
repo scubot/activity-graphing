@@ -9,6 +9,7 @@ from modules.botModule import *
 import asyncio
 import datetime
 
+
 class Scraper:
     def __init__(self, _database, _client, _server):
         self.database = _database
@@ -18,10 +19,10 @@ class Scraper:
     def initial_scrape(self):
         pass
 
-    def determine_start_message(self, table, channel):
+    async def determine_start_message(self, table, channel):
         table_last = len(table)
         while True:
-            obj = self.client.get_message(channel, table.get(doc_id=table_last))
+            obj = await self.client.get_message(channel, table.get(doc_id=table_last)['id'])
             if obj is not None:
                 return obj
             else:
@@ -29,26 +30,31 @@ class Scraper:
 
     async def update(self, c):
         # Open the table
+        x = tqdm.tqdm(mininterval=2, unit=' messages')
         table = self.database.table(c.id)
-        last_scraped = self.database.table('last_scraped')
-        last_scraped_msg = last_scraped.get(Query().channel_id == c.id)
-        # If the channel has never been scraped before this will be None...
-        if not last_scraped_msg:
-            pass
+        # If the channel has never been scraped before...
+        if len(table) == 0:
+            last_scraped_msg = None
         # If the channel has been scraped before, go through the list of last messages...
         else:
-            last_scraped_msg = self.determine_start_message(table, c)
+            last_scraped_msg = await self.determine_start_message(table, c)
         protected_table = self.database.table('protected')
         if protected_table.get(Query().id == c.id):
-            return 0 # Just end here.
-        last_scraped_buffer = []
+            return 0  # Just end here.
         # IDE may complain but that's because it doesn't know self.client is a discord.Client()
+        table_cache = []
         async for fetched_message in self.client.logs_from(c, after=last_scraped_msg, limit=10000000000):
-            table.insert({'id': fetched_message.id, 'timestamp': fetched_message.timestamp.timestamp(),
-                          'author': fetched_message.author.id, 'content': fetched_message.content})
+            table_cache.append({'id': fetched_message.id, 'timestamp': fetched_message.timestamp.timestamp(),
+                                'author': fetched_message.author.id, 'content': fetched_message.content})
+            x.update(1)
+        table_cache.reverse()
+        table.insert_multiple(table_cache)
+        x.close()
+        del x
 
     async def update_all(self):
         for c in self.server.channels:
+            print("Now scraping" + c.name)
             await self.update(c)
 
     async def update_one(self, channel_to_update):
