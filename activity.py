@@ -8,13 +8,15 @@ from tinydb import TinyDB, Query
 from modules.botModule import *
 import asyncio
 import datetime
+import os
 
 
 class Scraper:
-    def __init__(self, _database, _client, _server):
-        self.database = _database
-        self.client = _client
-        self.server = _server
+    def __init__(self, *, database, client, server, response_channel):
+        self.database = database
+        self.client = client
+        self.server = server
+        self.response_channel = response_channel
 
     def initial_scrape(self):
         pass
@@ -30,7 +32,9 @@ class Scraper:
 
     async def update(self, c):
         # Open the table
-        x = tqdm.tqdm(mininterval=2, unit=' messages')
+        bar = tqdm.tqdm(total=0, unit=' messages', file=open(os.devnull, 'w'))
+        message_return = await self.client.send_message(self.response_channel, bar)
+        last_edit = time.time()
         table = self.database.table(c.id)
         # If the channel has never been scraped before...
         if len(table) == 0:
@@ -44,17 +48,23 @@ class Scraper:
         # IDE may complain but that's because it doesn't know self.client is a discord.Client()
         table_cache = []
         async for fetched_message in self.client.logs_from(c, after=last_scraped_msg, limit=10000000000):
+            time_now = time.time()
             table_cache.append({'id': fetched_message.id, 'timestamp': fetched_message.timestamp.timestamp(),
                                 'author': fetched_message.author.id, 'content': fetched_message.content})
-            x.update(1)
+            bar.update(1)
+            if time_now - last_edit >= 2:
+                print("Updating.")
+                updated = str(bar)
+                await self.client.edit_message(message_return, updated)
+                last_edit = time.time()
         table_cache.reverse()
         table.insert_multiple(table_cache)
-        x.close()
-        del x
+        bar.close()
+        del bar
 
     async def update_all(self):
         for c in self.server.channels:
-            print("Now scraping" + c.name)
+            print("Now scraping " + c.name)
             await self.update(c)
 
     async def update_one(self, channel_to_update):
@@ -75,7 +85,8 @@ class Activity(BotModule):
     async def parse_command(self, message, client):
         msg = shlex.split(message.content)
         if msg[1] == 'update':
-            scraper = Scraper(self.module_db, client, message.server)
+            scraper = Scraper(database=self.module_db, client=client, server=message.server,
+                              response_channel=message.channel)
             if message.channel_mentions:
                 await scraper.update_one(message.channel_mentions[0])
             else:
