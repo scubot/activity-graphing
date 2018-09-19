@@ -27,7 +27,7 @@ class Scraper:
             else:
                 table_last -= 1
 
-    def update(self, c):
+    async def update(self, c):
         # Open the table
         table = self.database.table(c.id)
         last_scraped = self.database.table('last_scraped')
@@ -47,12 +47,12 @@ class Scraper:
             table.insert({'id': fetched_message.id, 'timestamp': fetched_message.timestamp.timestamp(),
                           'author': fetched_message.author.id, 'content': fetched_message.content})
 
-    def update_all(self):
+    async def update_all(self):
         for c in self.server.channels:
-            self.update(c)
+            await self.update(c)
 
-    def update_one(self, channel_to_update):
-        self.update(channel_to_update)
+    async def update_one(self, channel_to_update):
+        await self.update(channel_to_update)
 
 
 class Activity(BotModule):
@@ -71,9 +71,9 @@ class Activity(BotModule):
         if msg[1] == 'update':
             scraper = Scraper(self.module_db, client, message.server)
             if message.channel_mentions:
-                scraper.update_one(message.channel_mentions[0])
+                await scraper.update_one(message.channel_mentions[0])
             else:
-                scraper.update_all()
+                await scraper.update_all()
             pass
         else:
             pass
