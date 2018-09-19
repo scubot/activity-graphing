@@ -18,11 +18,14 @@ class Scraper:
     def initial_scrape(self):
         pass
 
-    def determine_start_message(self, li, channel):
-        for message in li:
-            obj = self.client.get_message(channel, message)
+    def determine_start_message(self, table, channel):
+        table_last = len(table)
+        while True:
+            obj = self.client.get_message(channel, table.get(doc_id=table_last))
             if obj is not None:
                 return obj
+            else:
+                table_last -= 1
 
     def update(self, c):
         # Open the table
@@ -34,7 +37,7 @@ class Scraper:
             pass
         # If the channel has been scraped before, go through the list of last messages...
         else:
-            last_scraped_msg = self.determine_start_message(last_scraped_msg['buffer'], c)
+            last_scraped_msg = self.determine_start_message(table, c)
         protected_table = self.database.table('protected')
         if protected_table.get(Query().id == c.id):
             return 0 # Just end here.
@@ -43,8 +46,6 @@ class Scraper:
         async for fetched_message in self.client.logs_from(c, after=last_scraped_msg, limit=10000000000):
             table.insert({'id': fetched_message.id, 'timestamp': fetched_message.timestamp.timestamp(),
                           'author': fetched_message.author.id, 'content': fetched_message.content})
-            last_scraped_buffer.append(fetched_message.id)
-        last_scraped.upsert({'channel_id': c.id, 'buffer': last_scraped_buffer[10:]})
 
     def update_all(self):
         for c in self.server.channels:
