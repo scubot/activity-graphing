@@ -1,13 +1,6 @@
-import discord
-import matplotlib
 import tqdm
-import shlex
-import time
-import copy
 from tinydb import TinyDB, Query
-from modules.botModule import *
-import asyncio
-import datetime
+import time
 import os
 
 
@@ -50,7 +43,8 @@ class Scraper:
         async for fetched_message in self.client.logs_from(c, after=last_scraped_msg, limit=10000000000):
             time_now = time.time()
             table_cache.append({'id': fetched_message.id, 'timestamp': fetched_message.timestamp.timestamp(),
-                                'author': fetched_message.author.id, 'content': fetched_message.content})
+                                'author': fetched_message.author.id, 'author_name': str(fetched_message.author),
+                                'content': fetched_message.content})
             bar.update(1)
             if time_now - last_edit >= 2:
                 updated = str(bar)
@@ -70,27 +64,3 @@ class Scraper:
         await self.client.send_message(self.response_channel, "Now fetching #" + channel_to_update.name)
         await self.update(channel_to_update)
 
-
-class Activity(BotModule):
-    name = 'activity'
-
-    description = 'Graphs server activity.'
-
-    help_text = '...'
-
-    trigger_string = 'activity'
-
-    module_version = '1.0.0'
-
-    async def parse_command(self, message, client):
-        msg = shlex.split(message.content)
-        if msg[1] == 'update':
-            scraper = Scraper(database=self.module_db, client=client, server=message.server,
-                              response_channel=message.channel)
-            if message.channel_mentions:
-                await scraper.update_one(message.channel_mentions[0])
-            else:
-                await scraper.update_all()
-            pass
-        else:
-            pass
