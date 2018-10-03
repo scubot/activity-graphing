@@ -39,6 +39,9 @@ class Grapher:
     def refine_search(search, pack):
         return [entry for entry in pack if str(search) in pack['content']]
 
+    def graph_users(self, pack):
+        pass
+
     def graph_long(self, pack):
         pass
 
