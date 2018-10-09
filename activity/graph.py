@@ -17,7 +17,6 @@ class Grapher:
         self.server = server
 
     def get_from_db(self, channel):
-
         table = self.database.table(channel.id)
         if not table:
             return None
@@ -43,16 +42,36 @@ class Grapher:
         pass
 
     def graph_long(self, pack):
-        pass
-
-    def graph_weekhour(self, pack):
         for line in pack:
-            raw_ts = line['timestamp'].timestamp()
-            second = datetime.timedelta(seconds=int((line-345600) % 604800))
+            line['timestamp'] = datetime.date.fromtimestamp(line[0])
+            line.pop('content', None)
+        flat = [x['timestamp'] for x in pack]
+        flat = [[x, flat.count(x)] for x in set(flat)]
+        r = np.asarray(flat)
+        r = r[r[:,0].argsort()]
+        years = mdates.YearLocator()
+        months = mdates.MonthLocator()
+        yearsFmt = mdates.DateFormatter('%Y')
+        fig, ax = plt.subplots()
+        ax.plot(r[:,0],r[:,1])
+        ax.xaxis.set_major_locator(years)
+        ax.xaxis.set_major_formatter(yearsFmt)
+        ax.xaxis.set_minor_locator(months)
+        ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
+        ax.grid(True)
+        fig.autofmt_xdate()
+        plt.xlabel("Date")
+        plt.ylabel("Messages")
+
+    @staticmethod
+    def graph_weekhour(pack):
+        for line in pack:
+            second = datetime.timedelta(seconds=int((line['timestamp']-345600) % 604800))
             hour = datetime.datetime(1, 1, 1) + second
             line['timestamp'] = hour.hour + ((hour.day-1)*24)
         hour_list = [x['timestamp'] for x in pack]
         hour_list = [[x, hour_list.count(x)] for x in set(hour_list)]
+        hour_list = np.asarray(hour_list)
         r = np.asarray(hour_list)
         r = r[r[:, 0].argsort()]
         fig, ax = plt.subplots()
