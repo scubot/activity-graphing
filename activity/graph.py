@@ -41,11 +41,16 @@ class Grapher:
     def graph_users(self, pack):
         pass
 
-    def graph_long(self, pack):
+    @staticmethod
+    def graph_long(pack):
         for line in pack:
+            # Convert to datetime objects
             line['timestamp'] = datetime.date.fromtimestamp(line[0])
+            # Remove the content key
             line.pop('content', None)
+        # Discard everything but the timestamp
         flat = [x['timestamp'] for x in pack]
+        # Count
         flat = [[x, flat.count(x)] for x in set(flat)]
         r = np.asarray(flat)
         r = r[r[:,0].argsort()]
@@ -66,10 +71,13 @@ class Grapher:
     @staticmethod
     def graph_weekhour(pack):
         for line in pack:
+            # Converts timestamp and rounds down to the nearest hour
             second = datetime.timedelta(seconds=int((line['timestamp']-345600) % 604800))
             hour = datetime.datetime(1, 1, 1) + second
             line['timestamp'] = hour.hour + ((hour.day-1)*24)
+        # Discard everything but the rounded timestamps
         hour_list = [x['timestamp'] for x in pack]
+        # Count them up
         hour_list = [[x, hour_list.count(x)] for x in set(hour_list)]
         hour_list = np.asarray(hour_list)
         r = np.asarray(hour_list)
