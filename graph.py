@@ -49,8 +49,7 @@ class Grapher:
             messages += self.get_from_db(channel)
         messages = await self.filter_messages(mode, messages)
         graph = self.make_graph(messages)
-        self.client.send_file(self.response_channel, graph, "Graph")
-
+        await self.client.send_file(self.response_channel, graph, "Graph")
 
     async def fetch_all(self, mode):
         messages = []
@@ -58,7 +57,7 @@ class Grapher:
             messages += self.get_from_db(channel)
         messages = await self.filter_messages(mode, messages)
         graph = self.make_graph(messages)
-        self.client.send_file(self.response_channel, graph)
+        await self.client.send_file(self.response_channel, graph)
 
     async def filter_messages(self, mode, messages):
         if not mode:
@@ -94,6 +93,8 @@ class Grapher:
         return messages
 
     def make_graph(self, messages):
+        # Right now only one kind of graph can be made
+        # In the future there should be a switch or something...
         for line in messages:
             raw_ts = line['timestamp'].timestamp()
             second = datetime.timedelta(seconds=int((raw_ts-345600) % 604800))
