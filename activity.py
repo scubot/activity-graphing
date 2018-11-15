@@ -33,8 +33,11 @@ class Activity(BotModule):
             else:
                 await scraper.update_all()
         elif msg[1] == 'graph':
-            grapher = gra.Grapher(database=self.module_db, client=client, server=message.server)
+            msg.pop(0) # leave just any graphing properties left
+            msg.pop(0)
+            grapher = gra.Grapher(database=self.module_db, client=client, server=message.server,
+                                  response_channel=message.channel)
             if message.channel_mentions:
-                pass
+                await grapher.fetch_some(message.channel_mentions, msg)
             else:
-                pass
+                await grapher.fetch_all(msg)
