@@ -35,9 +35,14 @@ class Activity(BotModule):
         elif msg[1] == 'graph':
             msg.pop(0) # leave just any graphing properties left
             msg.pop(0)
-            grapher = gra.Grapher(database=self.module_db, client=client, server=message.server,
-                                  response_channel=message.channel)
+            grapher = gra.Grapher(database=self.module_db, client=client, server=message.server)
             if message.channel_mentions:
-                await grapher.fetch_some(message.channel_mentions, msg)
+                graph = await grapher.fetch_some(message.channel_mentions, msg)
             else:
-                await grapher.fetch_all(msg)
+                graph = await grapher.fetch_all(msg)
+
+            if not graph:
+                client.send_message(message.channel, "[!] Could not find graph type.")
+            else:
+                await self.client.send_file(message.channel, graph)
+

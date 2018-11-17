@@ -14,11 +14,10 @@ class Grapher:
     graph_path = './modules/activity/graphs/graph.png'
 
     # the variable messages refers to what get_from_db returns.
-    def __init__(self, *, database, client, server, response_channel):
+    def __init__(self, *, database, client, server):
         self.database = database
         self.client = client
         self.server = server
-        self.response_channel = response_channel
 
     def get_from_db(self, channel):
 
@@ -43,48 +42,50 @@ class Grapher:
     def refine_search(search, messages):
         return [entry for entry in messages if str(search) in messages['content']]
 
-    async def fetch_some(self, channels, mode):
+    async def fetch_some(self, channels, options):
+        await self.fetch_graph(channels, options)
+
+    async def fetch_all(self, options):
+        await self.fetch_graph(self.server.channels, options)
+
+    async def fetch_graph(self, channels, mode):
         messages = []
         for channel in channels:
             messages += self.get_from_db(channel)
         messages = await self.filter_messages(mode, messages)
-        graph = self.make_graph(messages)
-        await self.client.send_file(self.response_channel, graph, "Graph")
-
-    async def fetch_all(self, mode):
-        messages = []
-        for channel in self.server.channels:
-            messages += self.get_from_db(channel)
-        messages = await self.filter_messages(mode, messages)
-        graph = self.make_graph(messages)
-        await self.client.send_file(self.response_channel, graph)
+        if mode[0] == 'weekly':
+            return self.make_weekly(messages)
+        # elif mode[0] == 'growth': # AKA Long
+        #     return self.make_long(messages)
+        else:
+            return None
 
     async def filter_messages(self, mode, messages):
         if not mode:
             pass
 
-        elif mode[0] == 'user':
+        elif mode[1] == 'user':
             if len(mode) != 2:
                 self.client.send_message(self.response_channel, "[!] Invalid number of arguments for specified mode.")
                 return 0
             else:
-                messages = self.refine_user(mode[1], messages)
+                messages = self.refine_user(mode[2], messages)
                 pass
             
-        elif mode[0] == 'time':
+        elif mode[1] == 'time':
             if len(mode) != 3:
                 self.client.send_message(self.response_channel, "[!] Invalid number of arguments for specified mode.")
                 return 0
             else:
-                messages = self.refine_time([mode[1], mode[2]], messages)
+                messages = self.refine_time([mode[2], mode[3]], messages)
                 pass
 
-        elif mode[0] == 'search':
+        elif mode[1] == 'search':
             if len(mode) != 2:
                 self.client.send_message(self.response_channel, "[!] Invalid number of arguments for specified mode.")
                 return 0
             else:
-                messages = self.refine_search(mode[1], messages)
+                messages = self.refine_search(mode[2], messages)
                 pass
         else:
             await self.client.send_message(self.response_channel, "[!] Invalid graphing mode.")
@@ -92,9 +93,7 @@ class Grapher:
 
         return messages
 
-    def make_graph(self, messages):
-        # Right now only one kind of graph can be made
-        # In the future there should be a switch or something...
+    def make_weekly(self, messages):
         for line in messages:
             raw_ts = line['timestamp'].timestamp()
             second = datetime.timedelta(seconds=int((raw_ts-345600) % 604800))
